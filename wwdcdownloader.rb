@@ -1,3 +1,4 @@
+#!/usr/bin/ruby -w
 # Have fun. Use at your own risk.
 
 require 'rubygems'
@@ -8,16 +9,17 @@ begin
   require 'mechanize'
   require 'json'
   require 'highline/import'
+  require 'zip/zip'
 rescue LoadError => e
   puts
   puts "You need to have the mechanize, json and highline gems installed."
   puts "Install them by running"
   puts
-  puts "  gem install mechanize json highline"
+  puts "  gem install mechanize json highline zip"
   puts
   puts "or"
   puts
-  puts "  sudo gem install mechanize json highline"
+  puts "  sudo gem install mechanize json highline zip"
   puts
   exit
 end
@@ -31,6 +33,8 @@ if ARGV.size < 1
   puts "Usage: ruby wwdcdownloader.rb <your Apple ID> [<target-dir>]"
   exit
 end
+
+unzip=false
 
 BASE_URI = 'https://developer.apple.com/wwdc-services/bct8wj4n/services.php?type=get_session_data'
 
@@ -118,6 +122,18 @@ a.get(BASE_URI) do |page|
                     a.get(url) do |downloaded_file|
                       open(dirname + "/" + filename, 'wb') do |file|
                         file.write(downloaded_file.body)
+                      end
+                      if unzip
+                        # From http://wp.me/piQMd-6z
+                        puts "  Unzipping #{filename}"
+                        unzip_dirname = dirname
+                        Zip::ZipFile.open("#{dirname}/#{filename}") do |zip_file|
+                          zip_file.each do |f|
+                            f_path = unzip_dirname + "/" + f.name
+                            FileUtils.mkdir_p(File.dirname(f_path))
+                            zip_file.extract(f, f_path) unless File.exist?(f_path)
+                          end
+                        end
                       end
                     end
                   rescue Exception => e
